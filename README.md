@@ -100,7 +100,7 @@ Seralogix uses a hybrid AI model:
 
 ```bash
 # clone repository
-git clone https://github.com/beratcomert/seralogix.git
+git clone https://github.com/beratcomert/SeraLogix.git
 
 # frontend
 cd frontend
