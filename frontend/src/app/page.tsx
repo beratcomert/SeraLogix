@@ -67,7 +67,7 @@ export default function Home() {
               <div className="w-full bg-slate-700 h-3 rounded-full mt-4 overflow-hidden">
                 <div 
                   className="bg-gradient-to-r from-yellow-400 to-emerald-500 h-full rounded-full transition-all duration-1000" 
-                  style={{ width: \`\${ai.healthScore}%\` }}
+                  style={{ width: `${ai.healthScore}%` }}
                 ></div>
               </div>
             </div>
