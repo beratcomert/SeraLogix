@@ -1,0 +1,191 @@
+[
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T08:00:00Z",
+        "temperature": 20.5,
+        "humidity": 88.2,
+        "soilMoisture": 42.1,
+        "light": 3200,
+        "soilTemperature": 19.8
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T08:15:00Z",
+        "temperature": 21.0,
+        "humidity": 87.5,
+        "soilMoisture": 41.3,
+        "light": 4500,
+        "soilTemperature": 20.1
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T08:30:00Z",
+        "temperature": 21.8,
+        "humidity": 86.0,
+        "soilMoisture": 40.5,
+        "light": 6200,
+        "soilTemperature": 20.4
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T08:45:00Z",
+        "temperature": 22.6,
+        "humidity": 84.3,
+        "soilMoisture": 39.2,
+        "light": 8500,
+        "soilTemperature": 20.9
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T09:00:00Z",
+        "temperature": 23.5,
+        "humidity": 82.0,
+        "soilMoisture": 37.8,
+        "light": 11000,
+        "soilTemperature": 21.5
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T09:15:00Z",
+        "temperature": 24.2,
+        "humidity": 80.1,
+        "soilMoisture": 36.4,
+        "light": 14000,
+        "soilTemperature": 22.0
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T09:30:00Z",
+        "temperature": 25.0,
+        "humidity": 78.5,
+        "soilMoisture": 35.0,
+        "light": 17500,
+        "soilTemperature": 22.4
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T09:45:00Z",
+        "temperature": 25.8,
+        "humidity": 76.8,
+        "soilMoisture": 33.6,
+        "light": 21000,
+        "soilTemperature": 22.9
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T10:00:00Z",
+        "temperature": 26.5,
+        "humidity": 75.0,
+        "soilMoisture": 32.1,
+        "light": 25000,
+        "soilTemperature": 23.3
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T10:15:00Z",
+        "temperature": 27.2,
+        "humidity": 73.2,
+        "soilMoisture": 30.5,
+        "light": 28500,
+        "soilTemperature": 23.8
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T10:30:00Z",
+        "temperature": 28.0,
+        "humidity": 71.5,
+        "soilMoisture": 29.0,
+        "light": 32000,
+        "soilTemperature": 24.2
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T10:45:00Z",
+        "temperature": 28.6,
+        "humidity": 70.0,
+        "soilMoisture": 27.8,
+        "light": 35500,
+        "soilTemperature": 24.6
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T11:00:00Z",
+        "temperature": 29.2,
+        "humidity": 68.5,
+        "soilMoisture": 26.5,
+        "light": 39000,
+        "soilTemperature": 25.0
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T11:15:00Z",
+        "temperature": 30.0,
+        "humidity": 67.0,
+        "soilMoisture": 25.2,
+        "light": 42000,
+        "soilTemperature": 25.5
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T11:30:00Z",
+        "temperature": 30.5,
+        "humidity": 65.5,
+        "soilMoisture": 24.0,
+        "light": 45000,
+        "soilTemperature": 26.0
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T11:45:00Z",
+        "temperature": 31.0,
+        "humidity": 64.0,
+        "soilMoisture": 23.0,
+        "light": 47000,
+        "soilTemperature": 26.3
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T12:00:00Z",
+        "temperature": 31.5,
+        "humidity": 63.0,
+        "soilMoisture": 22.0,
+        "light": 48000,
+        "soilTemperature": 26.7
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T12:15:00Z",
+        "temperature": 32.0,
+        "humidity": 62.0,
+        "soilMoisture": 21.0,
+        "light": 50000,
+        "soilTemperature": 27.0
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T12:30:00Z",
+        "temperature": 32.2,
+        "humidity": 61.5,
+        "soilMoisture": 20.5,
+        "light": 51000,
+        "soilTemperature": 27.2
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T12:45:00Z",
+        "temperature": 32.5,
+        "humidity": 60.8,
+        "soilMoisture": 20.0,
+        "light": 52000,
+        "soilTemperature": 27.5
+    },
+    {
+        "greenhouse_id": "sera_1",
+        "timestamp": "2026-03-28T13:00:00Z",
+        "temperature": 32.8,
+        "humidity": 60.0,
+        "soilMoisture": 19.5,
+        "light": 53000,
+        "soilTemperature": 27.8
+    }
+]
