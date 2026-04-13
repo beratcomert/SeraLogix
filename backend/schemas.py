@@ -54,3 +54,18 @@ class SensorSchema(BaseModel):
     light: float
     soil_temperature: Optional[float] = None
     device_id: str # Arduino identifies by its device_id
+class SensorLatestResponse(BaseModel):
+    temperature: Optional[float] = None
+    humidity: Optional[float] = None
+    soil_moisture: Optional[float] = None
+    light: Optional[float] = None
+    soil_temperature: Optional[float] = None
+    device_id: str
+
+class SensorLatestResponse(BaseModel):
+    temperature: Optional[float] = None
+    humidity: Optional[float] = None
+    soil_moisture: Optional[float] = None
+    light: Optional[float] = None
+    soil_temperature: Optional[float] = None
+    device_id: str

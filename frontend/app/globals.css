@@ -11,19 +11,23 @@
 }
 
 :root {
-  --background: oklch(0.98 0.01 160);
-  --foreground: oklch(0.2 0.02 160);
+  --background: #f8fafc;
+  /* slate-50 */
+  --foreground: #0f172a;
+  /* slate-900 */
 }
 
 .dark {
-  --background: oklch(0.15 0.02 160);
-  --foreground: oklch(0.95 0.01 160);
+  --background: #0a0a0a;
+  --foreground: #f8fafc;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .glass {

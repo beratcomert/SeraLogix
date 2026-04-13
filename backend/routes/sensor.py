@@ -4,6 +4,7 @@ import models, schemas
 from services.auth_service import get_db, get_current_user
 from services.ai import analyze
 from typing import List
+import random
 
 router = APIRouter()
 
@@ -37,7 +38,9 @@ def receive_sensor_data(data: schemas.SensorSchema, db: Session = Depends(get_db
     
     return {"status": "success", "alerts": alerts}
 
-@router.get("/latest/{greenhouse_id}", response_model=schemas.SensorSchema)
+from sqlalchemy import func
+
+@router.get("/latest/{greenhouse_id}", response_model=schemas.SensorLatestResponse)
 def get_latest_data(greenhouse_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     # Kullanıcının bu seraya erişimi var mı kontrol et
     greenhouse = db.query(models.Greenhouse).filter(
@@ -48,9 +51,21 @@ def get_latest_data(greenhouse_id: int, db: Session = Depends(get_db), current_u
     if not greenhouse:
         raise HTTPException(status_code=403, detail="Bu sera verilerine erişim yetkiniz yok")
     
-    latest = db.query(models.SensorData).filter(models.SensorData.greenhouse_id == greenhouse_id).order_by(models.SensorData.created_at.desc()).first()
+    # Test amaçlı: DB'deki tüm veriler arasından rastgele birini seçelim
+    latest = db.query(models.SensorData).filter(
+        models.SensorData.greenhouse_id == greenhouse_id
+    ).order_by(func.random()).first()
+    
     if not latest:
-        raise HTTPException(status_code=404, detail="Veri bulunamadı")
+        # DB tamamen boşsa tamamen rastgele üretelim
+        return {
+            "temperature": round(random.uniform(22.0, 26.5), 1),
+            "humidity": round(random.uniform(45.0, 65.0), 1),
+            "soil_moisture": round(random.uniform(50.0, 80.0), 1),
+            "light": round(random.uniform(400, 800), 0),
+            "soil_temperature": round(random.uniform(18.0, 22.0), 1),
+            "device_id": greenhouse.device_id
+        }
     
     return {
         "temperature": latest.temperature,

@@ -24,6 +24,7 @@ import Chart from "./components/Chart";
 import AIComment from "./components/AIComment";
 import QRScanner from "./components/QRScanner";
 import ThemeToggle from "./components/ThemeToggle";
+import Sidebar from "./components/Sidebar";
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
@@ -44,7 +45,7 @@ export default function Home() {
     setMounted(true);
   }, []);
 
-  const dark = mounted ? theme === "dark" : true; // Default to dark for premium feel before hydration
+  const dark = mounted ? theme === "dark" : false; // Default to light as per user request
 
   const checkAuth = () => {
     // ... no change to checkAuth ...
@@ -143,61 +144,54 @@ export default function Home() {
   );
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 ${dark ? 'bg-slate-950' : 'bg-slate-50'} font-sans`}>
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* HEADER */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
-          <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-2xl bg-green-600 flex items-center justify-center text-white shadow-xl shadow-green-500/20">
-              <Sprout size={32} />
-            </div>
-            <div>
-              <h1 className={`text-3xl font-extrabold tracking-tight ${dark ? 'text-white' : 'text-slate-900'}`}>
-                SeraLogix
+    <div className={`min-h-screen ${dark ? 'bg-[#0a0a0a]' : 'bg-slate-50'} flex transition-colors duration-200 uppercase-none`}>
+      <Sidebar dark={dark} onLogout={handleLogout} />
+
+      <div className="flex-1 lg:pl-72 flex flex-col min-h-screen">
+        <div className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-10 py-8 space-y-8">
+          {/* HEADER */}
+          <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div className="flex flex-col">
+              <h1 className={`text-4xl font-black tracking-tight ${dark ? 'text-white/90' : 'text-slate-900'}`}>
+                Analizler
               </h1>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-2">
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <p className={`text-sm font-medium ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-sm font-bold uppercase tracking-widest ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
                   {user?.sub} • {greenhouses.find(g => g.id === selectedGid)?.name || "Sera Seçilmedi"}
                 </p>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            {greenhouses.length > 0 && (
-              <div className="relative group">
-                <select
-                  value={selectedGid || ""}
-                  onChange={(e) => setSelectedGid(Number(e.target.value))}
-                  className={`appearance-none pl-4 pr-10 py-3 rounded-2xl ${dark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'} border font-bold focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all cursor-pointer`}
-                >
-                  {greenhouses.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" size={18} />
-              </div>
-            )}
+            <div className="flex items-center gap-4 w-full md:w-auto">
+              <button
+                onClick={fetchData}
+                disabled={isRefreshing}
+                className={`p-3.5 rounded-2xl ${dark ? 'bg-white/5 text-slate-400 hover:text-white' : 'bg-white text-slate-400 hover:text-green-600 shadow-sm'} transition-all hover:rotate-180 duration-500 border border-transparent dark:hover:border-white/10`}
+              >
+                <RefreshCw size={22} className={isRefreshing ? "animate-spin" : ""} />
+              </button>
 
-            <button
-              onClick={() => setShowScanner(true)}
-              className="px-6 py-3 rounded-2xl bg-green-600 text-white font-bold shadow-xl shadow-green-600/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-            >
-              <PlusCircle size={20} />
-              Cihaz Ekle
-            </button>
+              {greenhouses.length > 0 && (
+                <div className="relative group">
+                  <select
+                    value={selectedGid || ""}
+                    onChange={(e) => setSelectedGid(Number(e.target.value))}
+                    className={`appearance-none pl-5 pr-12 py-3.5 rounded-2xl ${dark ? 'bg-white/5 border-white/5 text-white' : 'bg-white border-slate-200 text-slate-900'} border font-bold focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all cursor-pointer min-w-[180px] shadow-sm`}
+                  >
+                    {greenhouses.map(g => (
+                      <option key={g.id} value={g.id} className={dark ? 'bg-slate-900' : 'bg-white'}>{g.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" size={18} />
+                </div>
+              )}
 
-            <ThemeToggle />
-
-            <button
-              onClick={handleLogout}
-              className={`p-3 rounded-2xl ${dark ? 'bg-slate-900 border-slate-800 text-slate-400 hover:text-red-400' : 'bg-white border-slate-200 text-slate-500 hover:text-red-500'} border transition-all`}
-            >
-              <LogOut size={20} />
-            </button>
-          </div>
-        </header>
+              <div className={`hidden md:block h-10 w-[1px] ${dark ? 'bg-white/5' : 'bg-slate-200'}`} />
+              
+              <ThemeToggle />
+            </div>
+          </header>
 
         {greenhouses.length === 0 ? (
           <div className="text-center py-40 space-y-6">
@@ -224,25 +218,25 @@ export default function Home() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <SensorCard
                 title="Sıcaklık"
-                value={`${data.temperature}°C`}
+                value={data.temperature !== null ? `${data.temperature}°C` : "--"}
                 icon={<Thermometer size={24} />}
                 gradient="from-orange-400 to-rose-500"
               />
               <SensorCard
                 title="Nem"
-                value={`%${data.humidity}`}
+                value={data.humidity !== null ? `%${data.humidity}` : "--"}
                 icon={<Droplets size={24} />}
                 gradient="from-blue-400 to-indigo-600"
               />
               <SensorCard
                 title="Toprak Nemi"
-                value={`%${data.soil_moisture}`}
+                value={data.soil_moisture !== null ? `%${data.soil_moisture}` : "--"}
                 icon={<Sprout size={24} />}
                 gradient="from-emerald-400 to-teal-600"
               />
               <SensorCard
                 title="Işık Şiddeti"
-                value={`${data.light} lx`}
+                value={data.light !== null ? `${data.light} lx` : "--"}
                 icon={<Sun size={24} />}
                 gradient="from-yellow-300 to-amber-500"
               />
@@ -260,6 +254,7 @@ export default function Home() {
             </div>
           </main>
         )}
+        </div>
       </div>
 
       {showScanner && <QRScanner onScan={handleQRScan} onClose={() => setShowScanner(false)} />}

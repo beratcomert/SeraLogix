@@ -20,7 +20,7 @@ export default function LoginPage() {
     setMounted(true);
   }, []);
 
-  const dark = mounted ? theme === "dark" : true;
+  const dark = mounted ? theme === "dark" : false;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,11 +34,11 @@ export default function LoginPage() {
 
       const response = await axios.post("http://localhost:8000/auth/login", params);
       const { access_token } = response.data;
-      
+
       localStorage.setItem("token", access_token);
-      
+
       const payload = JSON.parse(atob(access_token.split(".")[1]));
-      
+
       if (payload.role === "admin") {
         router.push("/admin");
       } else {
@@ -52,11 +52,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center transition-colors duration-500 ${dark ? 'bg-[#0a0a0a] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-900/20 via-[#0a0a0a] to-[#0a0a0a]' : 'bg-slate-50'} p-4`}>
+    <div className={`min-h-screen flex items-center justify-center transition-colors duration-200 ${dark ? 'bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-900/20 via-[#0a0a0a] to-[#0a0a0a]' : ''} p-4`}>
       <div className="absolute top-8 right-8">
         <ThemeToggle />
       </div>
-      
+
       <div className={`w-full max-w-md space-y-8 ${dark ? 'bg-white/5 backdrop-blur-xl border-white/10' : 'bg-white border-slate-200'} p-8 rounded-3xl border shadow-2xl transition-all`}>
         <div className="text-center space-y-2">
           <div className="inline-flex p-4 rounded-2xl bg-green-500/10 text-green-500 mb-2">
