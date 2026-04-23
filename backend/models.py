@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, DateTime, String, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, Float, DateTime, String, ForeignKey, Boolean, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
@@ -53,3 +53,65 @@ class SensorData(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     greenhouse = relationship("Greenhouse", back_populates="sensor_data")
+    health_score = relationship("PlantHealthScore", back_populates="sensor_data", uselist=False)
+
+
+class MLModel(Base):
+    __tablename__ = "ml_models"
+
+    id = Column(Integer, primary_key=True, index=True)
+    greenhouse_id = Column(Integer, ForeignKey("greenhouses.id"))
+    model_type = Column(String(50))  # "health_scorer", "anomaly_detector"
+    model_version = Column(Integer, default=1)
+    file_path = Column(String(500))
+    trained_on_rows = Column(Integer, default=0)
+    training_score = Column(Float, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    greenhouse = relationship("Greenhouse")
+
+
+class PlantHealthScore(Base):
+    __tablename__ = "plant_health_scores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    greenhouse_id = Column(Integer, ForeignKey("greenhouses.id"))
+    sensor_data_id = Column(Integer, ForeignKey("sensor_data.id"))
+    health_score = Column(Float)       # 0-100
+    anomaly_score = Column(Float)
+    is_anomaly = Column(Boolean, default=False)
+    score_breakdown = Column(Text)     # JSON string
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    greenhouse = relationship("Greenhouse")
+    sensor_data = relationship("SensorData", back_populates="health_score")
+
+
+class FarmerFeedback(Base):
+    __tablename__ = "farmer_feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    greenhouse_id = Column(Integer, ForeignKey("greenhouses.id"))
+    feedback_type = Column(String(30))  # "alert_useful", "yield_rating"
+    payload = Column(Text)              # JSON string
+    sensor_data_id = Column(Integer, ForeignKey("sensor_data.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    greenhouse = relationship("Greenhouse")
+
+
+class TrainingEvent(Base):
+    __tablename__ = "training_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    greenhouse_id = Column(Integer, ForeignKey("greenhouses.id"))
+    trigger_row_count = Column(Integer)
+    duration_seconds = Column(Float, nullable=True)
+    models_updated = Column(Text)       # JSON list
+    status = Column(String(20))         # "success", "failed", "skipped"
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    greenhouse = relationship("Greenhouse")
+
