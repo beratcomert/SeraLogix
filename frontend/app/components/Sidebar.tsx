@@ -1,16 +1,17 @@
 "use client";
 
 import React from "react";
-import { 
-  LayoutDashboard, 
-  Cpu, 
-  Settings, 
-  HelpCircle, 
-  Menu, 
+import {
+  LayoutDashboard,
+  Cpu,
+  Settings,
+  HelpCircle,
+  Menu,
   X,
   Sprout,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Brain
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,6 +30,11 @@ const Sidebar: React.FC<SidebarProps> = ({ dark, onLogout }) => {
       title: "Analizler",
       icon: <LayoutDashboard size={22} />,
       path: "/",
+    },
+    {
+      title: "AI Dashboard",
+      icon: <Brain size={22} />,
+      path: "/ai-dashboard",
     },
     {
       title: "Cihazlar",
@@ -55,7 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ dark, onLogout }) => {
   return (
     <>
       {/* Mobile Toggle Button - Floating Glass */}
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className={`lg:hidden fixed bottom-8 right-8 z-50 h-14 w-14 flex items-center justify-center rounded-2xl ${dark ? 'bg-green-600/90 text-white' : 'bg-green-600/90 text-white shadow-2xl shadow-green-500/40'} backdrop-blur-xl border border-white/10 transition-all active:scale-95`}
       >
@@ -64,7 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({ dark, onLogout }) => {
 
       {/* Backdrop with heavy blur */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 backdrop-blur-md z-40 lg:hidden transition-opacity duration-500"
           onClick={() => setIsOpen(false)}
         />
@@ -72,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ dark, onLogout }) => {
 
       {/* Sidebar Container */}
       <aside className={`fixed top-0 left-0 h-full z-40 transition-all duration-500 lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'} w-72 ${dark ? 'bg-slate-950/40 border-white/5 shadow-2xl' : 'bg-white/80 border-slate-200/50 shadow-xl'} backdrop-blur-2xl border-r flex flex-col overflow-hidden`}>
-        
+
         {/* Animated Background Gradients */}
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden opacity-20">
           <div className="absolute -top-[10%] -left-[10%] w-[60%] h-[40%] bg-emerald-500 rounded-full blur-[120px] animate-pulse" />
@@ -105,21 +111,20 @@ const Sidebar: React.FC<SidebarProps> = ({ dark, onLogout }) => {
               </p>
               <div className="space-y-1.5">
                 {menuItems.map((item) => (
-                  <Link 
+                  <Link
                     key={item.path}
                     href={item.path}
                     onClick={() => setIsOpen(false)}
-                    className={`flex items-center gap-3.5 px-4 py-4 rounded-3xl font-bold transition-all group relative overflow-hidden ${
-                      isActive(item.path) 
-                        ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25' 
-                        : `${dark ? 'text-slate-400 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-emerald-600'}`
-                    }`}
+                    className={`flex items-center gap-3.5 px-4 py-4 rounded-3xl font-bold transition-all group relative overflow-hidden ${isActive(item.path)
+                      ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
+                      : `${dark ? 'text-slate-400 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-emerald-600'}`
+                      }`}
                   >
                     <span className={`${isActive(item.path) ? 'text-white' : 'group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300'}`}>
                       {item.icon}
                     </span>
                     <span className="relative z-10 text-sm">{item.title}</span>
-                    
+
                     {isActive(item.path) ? (
                       <ChevronRight size={16} className="ml-auto animate-bounce-x" />
                     ) : (
@@ -136,15 +141,14 @@ const Sidebar: React.FC<SidebarProps> = ({ dark, onLogout }) => {
               </p>
               <div className="space-y-1.5">
                 {bottomItems.map((item) => (
-                  <Link 
+                  <Link
                     key={item.path}
                     href={item.path}
                     onClick={() => setIsOpen(false)}
-                    className={`flex items-center gap-3.5 px-4 py-4 rounded-3xl font-bold transition-all group ${
-                      isActive(item.path) 
-                        ? 'bg-emerald-600 text-white' 
-                        : `${dark ? 'text-slate-400 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-emerald-600'}`
-                    }`}
+                    className={`flex items-center gap-3.5 px-4 py-4 rounded-3xl font-bold transition-all group ${isActive(item.path)
+                      ? 'bg-emerald-600 text-white'
+                      : `${dark ? 'text-slate-400 hover:bg-white/5 hover:text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-emerald-600'}`
+                      }`}
                   >
                     <span className={`${isActive(item.path) ? 'text-white' : 'group-hover:scale-110 transition-transform duration-300'}`}>
                       {item.icon}
@@ -158,7 +162,7 @@ const Sidebar: React.FC<SidebarProps> = ({ dark, onLogout }) => {
 
           {/* User / Footer Section */}
           <div className="p-6 mt-auto">
-            <button 
+            <button
               onClick={onLogout}
               className={`w-full flex items-center justify-center gap-3 px-4 py-4 rounded-3xl font-black text-sm transition-all relative overflow-hidden group ${dark ? 'bg-white/5 text-slate-400 hover:bg-red-500/10 hover:text-red-400' : 'bg-slate-100/50 text-slate-500 hover:bg-red-50 hover:text-red-600'}`}
             >

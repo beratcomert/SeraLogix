@@ -2,12 +2,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import models
 from database import engine
-from api import auth, admin, user, sensor, mobile
+from api import auth, admin, user, sensor, mobile, ai
 
 # Veritabanı tablolarını oluştur (Basit yaklaşım, Alembic önerilir ama şimdilik yeterli)
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="SeraLogix API", version="1.0.0")
+app = FastAPI(title="SeraLogix API", version="2.0.0")
+
+@app.on_event("startup")
+async def startup_event():
+    import os
+    os.makedirs("ml_models", exist_ok=True)
+    from services.ml.scheduler import start_scheduler
+    start_scheduler()
 
 # CORS (frontend için şart)
 app.add_middleware(
@@ -24,6 +31,8 @@ app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(user.router, prefix="/user", tags=["User"])
 app.include_router(sensor.router, prefix="/sensor", tags=["Sensor"])
 app.include_router(mobile.router, prefix="/mobile", tags=["Mobile"])
+app.include_router(ai.router, prefix="/ai", tags=["AI"])
+
 
 @app.get("/")
 def root():

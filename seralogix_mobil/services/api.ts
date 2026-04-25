@@ -40,3 +40,30 @@ export const mobileService = {
     return response.data;
   }
 };
+export const aiService = {
+  getAnalysis: async (greenhouseId: number) => {
+    const response = await api.get(`/ai/analysis/${greenhouseId}`);
+    return response.data;
+  },
+  getRecommendations: async (greenhouseId: number) => {
+    const response = await api.get(`/ai/recommendations/${greenhouseId}`);
+    return response.data;
+  },
+  getHealthHistory: async (greenhouseId: number, limit: number = 50) => {
+    const response = await api.get(`/ai/health/history/${greenhouseId}?limit=${limit}`);
+    return response.data;
+  },
+  submitFeedback: async (greenhouseId: number, feedbackType: string, payload: object, sensorDataId?: number) => {
+    const response = await api.post(`/ai/feedback/${greenhouseId}`, {
+      feedback_type: feedbackType,
+      payload,
+      sensor_data_id: sensorDataId ?? null,
+    });
+    return response.data;
+  },
+  getModelStatus: async (greenhouseId: number) => {
+    const response = await api.get(`/ai/status/${greenhouseId}`);
+    return response.data;
+  },
+};
+

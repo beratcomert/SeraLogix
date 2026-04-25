@@ -22,6 +22,7 @@ import SensorCard from "./components/SensorCard";
 import AlertBox from "./components/AlertBox";
 import Chart from "./components/Chart";
 import AIComment from "./components/AIComment";
+import HealthHistoryChart from "./components/HealthHistoryChart";
 import QRScanner from "./components/QRScanner";
 import ThemeToggle from "./components/ThemeToggle";
 import Sidebar from "./components/Sidebar";
@@ -188,72 +189,73 @@ export default function Home() {
               )}
 
               <div className={`hidden md:block h-10 w-[1px] ${dark ? 'bg-white/5' : 'bg-slate-200'}`} />
-              
+
               <ThemeToggle />
             </div>
           </header>
 
-        {greenhouses.length === 0 ? (
-          <div className="text-center py-40 space-y-6">
-            <div className="inline-flex p-8 rounded-[40px] bg-green-500/10 text-green-500 mb-4">
-              <QrCode size={80} />
+          {greenhouses.length === 0 ? (
+            <div className="text-center py-40 space-y-6">
+              <div className="inline-flex p-8 rounded-[40px] bg-green-500/10 text-green-500 mb-4">
+                <QrCode size={80} />
+              </div>
+              <h2 className={`text-3xl font-black ${dark ? 'text-white' : 'text-slate-900'}`}>Henüz Bir Senör Cihazınız Yok</h2>
+              <p className="text-gray-500 max-w-md mx-auto">SeraLogix'i kullanmaya başlamak için cihazınızın üzerindeki QR kodunu taratmanız gerekmektedir.</p>
+              <button
+                onClick={() => setShowScanner(true)}
+                className="px-10 py-4 bg-green-600 text-white rounded-2xl font-black text-lg shadow-2xl shadow-green-600/30 hover:scale-105 transition-all"
+              >
+                Hemen QR Tara
+              </button>
             </div>
-            <h2 className={`text-3xl font-black ${dark ? 'text-white' : 'text-slate-900'}`}>Henüz Bir Senör Cihazınız Yok</h2>
-            <p className="text-gray-500 max-w-md mx-auto">SeraLogix'i kullanmaya başlamak için cihazınızın üzerindeki QR kodunu taratmanız gerekmektedir.</p>
-            <button
-              onClick={() => setShowScanner(true)}
-              className="px-10 py-4 bg-green-600 text-white rounded-2xl font-black text-lg shadow-2xl shadow-green-600/30 hover:scale-105 transition-all"
-            >
-              Hemen QR Tara
-            </button>
-          </div>
-        ) : !data ? (
-          <div className="text-center py-40">
-            <Loader2 className="animate-spin text-green-500 mx-auto" size={40} />
-            <p className="mt-4 text-gray-500">Cihazdan veriler bekleniyor...</p>
-          </div>
-        ) : (
-          <main className="space-y-8 animate-in fade-in duration-700">
-            {/* STATS GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <SensorCard
-                title="Sıcaklık"
-                value={data.temperature !== null ? `${data.temperature}°C` : "--"}
-                icon={<Thermometer size={24} />}
-                gradient="from-orange-400 to-rose-500"
-              />
-              <SensorCard
-                title="Nem"
-                value={data.humidity !== null ? `%${data.humidity}` : "--"}
-                icon={<Droplets size={24} />}
-                gradient="from-blue-400 to-indigo-600"
-              />
-              <SensorCard
-                title="Toprak Nemi"
-                value={data.soil_moisture !== null ? `%${data.soil_moisture}` : "--"}
-                icon={<Sprout size={24} />}
-                gradient="from-emerald-400 to-teal-600"
-              />
-              <SensorCard
-                title="Işık Şiddeti"
-                value={data.light !== null ? `${data.light} lx` : "--"}
-                icon={<Sun size={24} />}
-                gradient="from-yellow-300 to-amber-500"
-              />
+          ) : !data ? (
+            <div className="text-center py-40">
+              <Loader2 className="animate-spin text-green-500 mx-auto" size={40} />
+              <p className="mt-4 text-gray-500">Cihazdan veriler bekleniyor...</p>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-8">
-                <Chart data={history} />
+          ) : (
+            <main className="space-y-8 animate-in fade-in duration-700">
+              {/* STATS GRID */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <SensorCard
+                  title="Sıcaklık"
+                  value={data.temperature !== null ? `${data.temperature}°C` : "--"}
+                  icon={<Thermometer size={24} />}
+                  gradient="from-orange-400 to-rose-500"
+                />
+                <SensorCard
+                  title="Nem"
+                  value={data.humidity !== null ? `%${data.humidity}` : "--"}
+                  icon={<Droplets size={24} />}
+                  gradient="from-blue-400 to-indigo-600"
+                />
+                <SensorCard
+                  title="Toprak Nemi"
+                  value={data.soil_moisture !== null ? `%${data.soil_moisture}` : "--"}
+                  icon={<Sprout size={24} />}
+                  gradient="from-emerald-400 to-teal-600"
+                />
+                <SensorCard
+                  title="Işık Şiddeti"
+                  value={data.light !== null ? `${data.light} lx` : "--"}
+                  icon={<Sun size={24} />}
+                  gradient="from-yellow-300 to-amber-500"
+                />
               </div>
 
-              <div className="space-y-8">
-                <AIComment alerts={alerts} />
-                <AlertBox alerts={alerts} />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                  <Chart data={history} />
+                  <HealthHistoryChart greenhouseId={selectedGid} dark={dark} />
+                </div>
+
+                <div className="space-y-8">
+                  <AIComment greenhouseId={selectedGid} dark={dark} />
+                  <AlertBox alerts={alerts} />
+                </div>
               </div>
-            </div>
-          </main>
-        )}
+            </main>
+          )}
         </div>
       </div>
 

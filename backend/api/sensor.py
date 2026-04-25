@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 import models, schemas
 from services.auth_service import get_db, get_current_user
@@ -9,7 +9,7 @@ import random
 router = APIRouter()
 
 @router.post("/data")
-def receive_sensor_data(data: schemas.SensorSchema, db: Session = Depends(get_db)):
+def receive_sensor_data(data: schemas.SensorSchema, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # 1. Cihazın hangi seraya ait olduğunu bul
     db_greenhouse = db.query(models.Greenhouse).filter(models.Greenhouse.device_id == data.device_id).first()
     if not db_greenhouse:
@@ -28,16 +28,28 @@ def receive_sensor_data(data: schemas.SensorSchema, db: Session = Depends(get_db
     db.commit()
     db.refresh(new_data)
     
-    # 3. AI Analizi yap
+    # 3. Legacy kural tabanlı AI Analizi
     alerts = analyze({
         "temperature": data.temperature,
         "humidity": data.humidity,
-        "soilMoisture": data.soil_moisture, # AI servisi eski formatı bekliyor olabilir
+        "soilMoisture": data.soil_moisture, 
         "light": data.light
     })
     
+    # 4. ML eğitim kontrolünü arka planda tetikle
+    background_tasks.add_task(
+        _trigger_ml_training, db_greenhouse.id
+    )
+
     return {"status": "success", "alerts": alerts}
 
+async def _trigger_ml_training(greenhouse_id: int) -> None:
+    try:
+        from services.ml.scheduler import check_and_train_async
+        await check_and_train_async(greenhouse_id)
+    except Exception:
+        pass
+    
 from sqlalchemy import func
 
 @router.get("/latest/{greenhouse_id}", response_model=schemas.SensorLatestResponse)
