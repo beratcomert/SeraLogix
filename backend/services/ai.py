@@ -1,14 +1,13 @@
 import json
 from datetime import datetime
 from typing import List, Optional
-
+from services.rule_analyzer import analyze
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 
 import models
 import schemas
 from services.auth_service import get_db, get_current_user, get_current_admin
-from services.ai import analyze
 
 router = APIRouter()
 

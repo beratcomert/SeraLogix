@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 import models, schemas
 from services.auth_service import get_db, get_current_user
-from services.ai import analyze
+from services.rule_analyzer import analyze
 from typing import List
 import random
 
