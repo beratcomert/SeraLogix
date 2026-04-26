@@ -98,3 +98,6 @@ def start_scheduler() -> None:
 
 
 def stop_scheduler() -> None:
+    global _scheduler
+    if _scheduler and _scheduler.running:
+        _scheduler.shutdown()
