@@ -35,8 +35,8 @@ function HealthRing({ score, dark }: { score: number; dark?: boolean }) {
                 "#ef4444";
 
     return (
-        <div className="flex flex-col items-center gap-1">
-            <svg width="100" height="100" className="rotate-[-90deg]">
+        <div className="relative flex items-center justify-center" style={{ width: 100, height: 100 }}>
+            <svg width="100" height="100" className="rotate-[-90deg] absolute inset-0">
                 <circle
                     cx="50" cy="50" r={radius}
                     fill="none"
@@ -54,9 +54,9 @@ function HealthRing({ score, dark }: { score: number; dark?: boolean }) {
                     style={{ transition: "stroke-dashoffset 1s ease" }}
                 />
             </svg>
-            <div className="absolute flex flex-col items-center">
-                <span className="text-2xl font-black" style={{ color }}>{Math.round(score)}</span>
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${dark ? "text-slate-400" : "text-slate-500"}`}>Sağlık</span>
+            <div className="relative flex flex-col items-center">
+                <span className="text-2xl font-black leading-none" style={{ color }}>{Math.round(score)}</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${dark ? "text-slate-400" : "text-slate-500"}`}>Sağlık</span>
             </div>
         </div>
     );
@@ -200,9 +200,7 @@ export default function AIComment({ greenhouseId, dark }: Props) {
                     <>
                         {/* Sağlık Skoru + Detay Çubukları */}
                         <div className="flex items-center gap-6">
-                            <div className="relative flex items-center justify-center" style={{ minWidth: 100, minHeight: 100 }}>
-                                <HealthRing score={analysis.health_score} dark={dark} />
-                            </div>
+                            <HealthRing score={analysis.health_score} dark={dark} />
                             <div className="flex-1 flex flex-col gap-2">
                                 {Object.entries(breakdown).map(([key, val]) => (
                                     <ScoreBar

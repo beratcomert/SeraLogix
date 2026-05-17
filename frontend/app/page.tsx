@@ -243,13 +243,15 @@ export default function Home() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-8">
+              <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+                {/* Sol: Grafikler */}
+                <div className="xl:col-span-3 space-y-8">
                   <Chart data={history} />
                   <HealthHistoryChart greenhouseId={selectedGid} dark={dark} />
                 </div>
 
-                <div className="space-y-8">
+                {/* Sağ: AI Analiz + Uyarılar */}
+                <div className="xl:col-span-2 space-y-6">
                   <AIComment greenhouseId={selectedGid} dark={dark} />
                   <AlertBox alerts={alerts} />
                 </div>

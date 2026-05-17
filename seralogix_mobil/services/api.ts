@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ÖNEMLİ: Emülatör kullanıyorsanız 10.0.2.2, gerçek cihaz için kendi bilgisayarınızın IP'sini girin.
-const API_BASE_URL = 'http://192.168.1.3:8000';
+const API_BASE_URL = 'http://192.168.1.2:8000';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
