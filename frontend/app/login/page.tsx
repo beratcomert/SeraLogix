@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Flower, Lock, User, Loader2 } from "lucide-react";
+import { Flower, Lock, User, Loader2, Cpu, FlaskConical } from "lucide-react";
 import axios from "axios";
 import ThemeToggle from "../components/ThemeToggle";
 import { useTheme } from "next-themes";
@@ -12,13 +12,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [dataMode, setDataMode] = useState<"real" | "simulation">("real");
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
+    const saved = typeof window !== "undefined" ? localStorage.getItem("data_mode") : null;
+    if (saved === "real" || saved === "simulation") setDataMode(saved);
   }, []);
+
+  const handleModeChange = (mode: "real" | "simulation") => {
+    setDataMode(mode);
+    if (typeof window !== "undefined") localStorage.setItem("data_mode", mode);
+  };
 
   const dark = mounted ? theme === "dark" : false;
 
@@ -36,6 +44,7 @@ export default function LoginPage() {
       const { access_token } = response.data;
 
       localStorage.setItem("token", access_token);
+      localStorage.setItem("data_mode", dataMode);
 
       const payload = JSON.parse(atob(access_token.split(".")[1]));
 
@@ -105,6 +114,47 @@ export default function LoginPage() {
           >
             {loading ? <Loader2 className="animate-spin" size={20} /> : "Giriş Yap"}
           </button>
+
+          {/* Veri Kaynağı Toggle */}
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between px-1">
+              <span className={`text-xs font-semibold uppercase tracking-wider ${dark ? 'text-gray-400' : 'text-slate-500'}`}>
+                Veri Kaynağı
+              </span>
+              <span className={`text-[11px] ${dataMode === 'simulation' ? 'text-amber-500' : 'text-emerald-500'} font-bold`}>
+                {dataMode === 'simulation' ? 'DB → Model → Akış' : 'Arduino Canlı'}
+              </span>
+            </div>
+            <div className={`grid grid-cols-2 gap-1 p-1 rounded-xl border ${dark ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
+              <button
+                type="button"
+                onClick={() => handleModeChange('real')}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  dataMode === 'real'
+                    ? 'bg-green-600 text-white shadow shadow-green-600/30'
+                    : (dark ? 'text-gray-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')
+                }`}
+              >
+                <Cpu size={16} /> Gerçek Veri
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('simulation')}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  dataMode === 'simulation'
+                    ? 'bg-amber-500 text-white shadow shadow-amber-500/30'
+                    : (dark ? 'text-gray-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')
+                }`}
+              >
+                <FlaskConical size={16} /> Simülasyon
+              </button>
+            </div>
+            <p className={`text-[11px] leading-relaxed px-1 ${dark ? 'text-gray-500' : 'text-slate-400'}`}>
+              {dataMode === 'simulation'
+                ? 'DB\'deki geçmiş veriler ile model eğitilir ve veriler sırayla canlı veri gibi sisteme beslenir.'
+                : 'Sisteme bağlı Arduino cihazından gelen gerçek sensör verileri kullanılır.'}
+            </p>
+          </div>
         </form>
 
         <p className={`text-center ${dark ? 'text-gray-500' : 'text-slate-400'} text-sm`}>

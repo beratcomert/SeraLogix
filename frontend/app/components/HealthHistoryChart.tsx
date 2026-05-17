@@ -57,7 +57,7 @@ export default function HealthHistoryChart({ greenhouseId, dark }: Props) {
         };
 
         fetch();
-        const interval = setInterval(fetch, 60000);
+        const interval = setInterval(fetch, 4000);
         return () => clearInterval(interval);
     }, [greenhouseId]);
 

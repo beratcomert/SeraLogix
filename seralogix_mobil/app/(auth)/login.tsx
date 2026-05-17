@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, 
-  StyleSheet, Dimensions, KeyboardAvoidingView, 
-  Platform, ActivityIndicator, Alert 
+import React, { useEffect, useState } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, Dimensions, KeyboardAvoidingView,
+  Platform, ActivityIndicator, Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Sprout, User, Lock, ArrowRight } from 'lucide-react-native';
+import { Sprout, User, Lock, ArrowRight, Cpu, FlaskConical } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { authService } from '../../services/api';
 
@@ -15,17 +15,28 @@ export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dataMode, setDataMode] = useState<'real' | 'simulation'>('real');
   const router = useRouter();
+
+  useEffect(() => {
+    authService.getDataMode().then(setDataMode);
+  }, []);
+
+  const updateMode = async (mode: 'real' | 'simulation') => {
+    setDataMode(mode);
+    await authService.setDataMode(mode);
+  };
 
   const handleLogin = async () => {
     if (!username || !password) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
       return;
     }
-    
+
     setLoading(true);
     try {
       await authService.login(username, password);
+      await authService.setDataMode(dataMode);
       router.replace('/(tabs)');
     } catch (err: any) {
       console.error(err);
@@ -103,6 +114,39 @@ export default function LoginScreen() {
                 )}
               </LinearGradient>
             </TouchableOpacity>
+
+            {/* Veri Kaynağı Toggle */}
+            <View style={styles.modeWrapper}>
+              <View style={styles.modeLabelRow}>
+                <Text style={styles.modeLabel}>VERİ KAYNAĞI</Text>
+                <Text style={[styles.modeHint, dataMode === 'simulation' ? { color: '#f59e0b' } : { color: '#10b981' }]}>
+                  {dataMode === 'simulation' ? 'DB → Model → Akış' : 'Arduino Canlı'}
+                </Text>
+              </View>
+              <View style={styles.modeToggle}>
+                <TouchableOpacity
+                  onPress={() => updateMode('real')}
+                  activeOpacity={0.85}
+                  style={[styles.modeBtn, dataMode === 'real' && styles.modeBtnReal]}
+                >
+                  <Cpu color={dataMode === 'real' ? 'white' : '#64748b'} size={16} />
+                  <Text style={[styles.modeBtnText, dataMode === 'real' && { color: 'white' }]}>Gerçek Veri</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => updateMode('simulation')}
+                  activeOpacity={0.85}
+                  style={[styles.modeBtn, dataMode === 'simulation' && styles.modeBtnSim]}
+                >
+                  <FlaskConical color={dataMode === 'simulation' ? 'white' : '#64748b'} size={16} />
+                  <Text style={[styles.modeBtnText, dataMode === 'simulation' && { color: 'white' }]}>Simülasyon</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.modeDesc}>
+                {dataMode === 'simulation'
+                  ? "DB'deki geçmiş veriyle model eğitilir ve veriler sırayla canlı veri gibi akar."
+                  : 'Cihaza bağlı Arduino sensöründen gelen gerçek veriler kullanılır.'}
+              </Text>
+            </View>
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Hesabınız yok mu? </Text>
@@ -218,5 +262,67 @@ const styles = StyleSheet.create({
     color: '#10b981',
     fontSize: 15,
     fontWeight: '700',
+  },
+  modeWrapper: {
+    marginTop: 18,
+  },
+  modeLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  modeLabel: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  modeHint: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  modeToggle: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 14,
+    padding: 4,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  modeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  modeBtnReal: {
+    backgroundColor: '#059669',
+    shadowColor: '#10b981',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  modeBtnSim: {
+    backgroundColor: '#d97706',
+    shadowColor: '#f59e0b',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  modeBtnText: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modeDesc: {
+    color: '#64748b',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 8,
+    paddingHorizontal: 4,
   },
 });

@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Animated, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Animated, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { userService } from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -12,7 +13,9 @@ export default function AddDeviceScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [scannedData, setScannedData] = useState<string | null>(null);
-  
+  const [greenhouseName, setGreenhouseName] = useState('Benim Seram');
+  const [submitting, setSubmitting] = useState(false);
+
   // Animation for the scanner line
   const scanAnim = useRef(new Animated.Value(0)).current;
 
@@ -46,27 +49,28 @@ export default function AddDeviceScreen() {
   const handleBarcodeScanned = ({ type, data }: { type: string; data: string }) => {
     setScanned(true);
     setScannedData(data);
-    Alert.alert("QR Kod Okundu", `Cihaz bilgisi: ${data}`, [
-      {
-        text: "Tamam",
-        onPress: () => {}
-      },
-      {
-        text: "Yeniden Tara",
-        onPress: () => setScanned(false)
-      }
-    ]);
   };
 
-  const handleConnect = () => {
-    if (scannedData) {
-      Alert.alert("Başarılı", `${scannedData} başarıyla bağlandı!`);
-      // Simüle ediyoruz
-      setTimeout(() => {
-        router.back();
-      }, 1500);
-    } else {
-      Alert.alert("Hata", "Lütfen önce bir QR kod tarayın.");
+  const handleConnect = async () => {
+    if (!scannedData) {
+      Alert.alert('Hata', 'Lütfen önce bir QR kod tarayın.');
+      return;
+    }
+    if (!greenhouseName.trim()) {
+      Alert.alert('Hata', 'Lütfen seranıza bir isim verin.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await userService.addGreenhouse(greenhouseName.trim(), scannedData);
+      Alert.alert('Başarılı', `${scannedData} hesabınıza eklendi. Web panelinde de görünecektir.`, [
+        { text: 'Tamam', onPress: () => router.replace('/(tabs)') },
+      ]);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || 'Cihaz eklenemedi.';
+      Alert.alert('Hata', detail);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -122,25 +126,47 @@ export default function AddDeviceScreen() {
           </View>
 
           <Text style={[styles.helperText, scanned && { color: '#10b981' }]}>
-            {scanned ? "Kod tarandı, bağlanabilirsiniz." : "Taramak için QR kodunu çerçevenin içine hizalayın"}
+            {scanned ? `Cihaz ID: ${scannedData}` : 'Taramak için QR kodunu çerçevenin içine hizalayın'}
           </Text>
+
+          {scanned && (
+            <View style={styles.nameWrapper}>
+              <Text style={styles.label}>Sera Adı</Text>
+              <TextInput
+                style={styles.nameInput}
+                value={greenhouseName}
+                onChangeText={setGreenhouseName}
+                placeholder="Örn: Sera 1"
+                placeholderTextColor="#475569"
+              />
+              <TouchableOpacity onPress={() => setScanned(false)} style={styles.rescanBtn}>
+                <Text style={styles.rescanText}>Yeniden Tara</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Action Buttons */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.cancelButton}
               onPress={() => router.back()}
+              disabled={submitting}
             >
               <Text style={styles.cancelButtonText}>İptal</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.connectButton, !scannedData && styles.connectButtonDisabled]}
+
+            <TouchableOpacity
+              style={[styles.connectButton, (!scannedData || submitting) && styles.connectButtonDisabled]}
               onPress={handleConnect}
+              disabled={!scannedData || submitting}
             >
-              <Text style={[styles.connectButtonText, !scannedData && styles.connectButtonTextDisabled]}>
-                Cihazı Bağla
-              </Text>
+              {submitting ? (
+                <ActivityIndicator color="#065f46" />
+              ) : (
+                <Text style={[styles.connectButtonText, !scannedData && styles.connectButtonTextDisabled]}>
+                  Cihazı Bağla
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -310,5 +336,29 @@ const styles = StyleSheet.create({
   },
   connectButtonTextDisabled: {
     color: 'rgba(6, 95, 70, 0.5)',
+  },
+  nameWrapper: {
+    marginBottom: 18,
+  },
+  nameInput: {
+    backgroundColor: '#0f1115',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: 'white',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    fontSize: 14,
+  },
+  rescanBtn: {
+    alignSelf: 'flex-end',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    marginTop: 6,
+  },
+  rescanText: {
+    color: '#10b981',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

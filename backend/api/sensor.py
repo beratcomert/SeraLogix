@@ -63,20 +63,24 @@ def get_latest_data(greenhouse_id: int, db: Session = Depends(get_db), current_u
     if not greenhouse:
         raise HTTPException(status_code=403, detail="Bu sera verilerine erişim yetkiniz yok")
     
-    # Test amaçlı: DB'deki tüm veriler arasından rastgele birini seçelim
+    # Gerçek modda: Arduino'dan gelen son veri. Simülasyon modunda:
+    # simulation_service'in az önce eklediği satır. Her iki durumda da
+    # 'en son eklenen' satırı döndürürüz.
     latest = db.query(models.SensorData).filter(
         models.SensorData.greenhouse_id == greenhouse_id
-    ).order_by(func.random()).first()
+    ).order_by(models.SensorData.created_at.desc(), models.SensorData.id.desc()).first()
     
     if not latest:
-        # DB tamamen boşsa tamamen rastgele üretelim
+        # Bu sera için henüz hiç sensör verisi yok. Sahte veri ÜRETMEYİZ —
+        # aksi halde boş bir sera, başka bir seranın verileri varmış gibi
+        # görünür. UI bu durumda "veri yok" göstermelidir.
         return {
-            "temperature": round(random.uniform(22.0, 26.5), 1),
-            "humidity": round(random.uniform(45.0, 65.0), 1),
-            "soil_moisture": round(random.uniform(50.0, 80.0), 1),
-            "light": round(random.uniform(400, 800), 0),
-            "soil_temperature": round(random.uniform(18.0, 22.0), 1),
-            "device_id": greenhouse.device_id
+            "temperature": None,
+            "humidity": None,
+            "soil_moisture": None,
+            "light": None,
+            "soil_temperature": None,
+            "device_id": greenhouse.device_id,
         }
     
     return {

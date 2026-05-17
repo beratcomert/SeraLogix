@@ -1,138 +1,229 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, 
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView,
   RefreshControl, TouchableOpacity, Dimensions,
   ActivityIndicator, StatusBar
 } from 'react-native';
-import { 
-  Thermometer, Droplets, Sprout, Sun, 
-  ArrowUp, ArrowDown, Minus, Bot, 
-  Activity, Battery, Wifi, Cpu, 
-  LogOut, AlertTriangle
+import {
+  Thermometer, Droplets, Sprout, Sun,
+  Bot, AlertTriangle, LogOut, Cpu, FlaskConical,
+  Activity, Sparkles, CheckCircle2, Bell,
 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { mobileService, authService } from '../../services/api';
-import Svg, { Path } from 'react-native-svg';
+import { useRouter, useFocusEffect } from 'expo-router';
+import {
+  mobileService, authService, aiService,
+  simulationService, sensorService,
+} from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
-const MiniBarChart = ({ color }: { color: string }) => (
-  <View style={styles.miniChartContainer}>
-    <View style={[styles.bar, { height: 12, backgroundColor: color, opacity: 0.4 }]} />
-    <View style={[styles.bar, { height: 18, backgroundColor: color, opacity: 0.6 }]} />
-    <View style={[styles.bar, { height: 26, backgroundColor: color, opacity: 0.8 }]} />
-    <View style={[styles.bar, { height: 20, backgroundColor: color, opacity: 1 }]} />
+interface Greenhouse {
+  id: number;
+  name: string;
+  device_id: string;
+  latest_stats: {
+    temperature: number | null;
+    humidity: number | null;
+    soil_moisture: number | null;
+    light: number | null;
+    soil_temperature: number | null;
+    last_update: string | null;
+  };
+}
+
+interface AIAnalysis {
+  health_score: number;
+  anomaly_score: number;
+  is_anomaly: boolean;
+  score_breakdown: Record<string, number>;
+  recommendations: string[];
+  rule_alerts: string[];
+  model_version: number | null;
+  last_trained_at: string | null;
+}
+
+const BREAKDOWN_LABELS: Record<string, string> = {
+  sicaklik: 'Sıcaklık',
+  nem: 'Nem',
+  toprak_nemi: 'Toprak Nemi',
+  isik: 'Işık',
+  vpd: 'VPD',
+};
+
+const SensorCard = ({ title, value, unit, icon: Icon, color }: any) => (
+  <View style={styles.sensorCard}>
+    <View style={styles.sensorHeader}>
+      <Text style={styles.sensorTitle}>{title.toUpperCase()}</Text>
+      <Icon color={color} size={20} />
+    </View>
+    <View style={styles.sensorBody}>
+      <Text style={[styles.sensorValue, { color }]}>{value}</Text>
+      <Text style={styles.sensorUnit}>{unit}</Text>
+    </View>
   </View>
 );
 
-const HistoryChart = () => {
+const HealthRing = ({ score }: { score: number }) => {
+  const size = 110;
+  const stroke = 10;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (Math.max(0, Math.min(100, score)) / 100) * circumference;
+  const color = score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444';
   return (
-    <View style={styles.chartWrapper}>
-      <Svg height="150" width="100%" viewBox={`0 0 ${width - 60} 150`}>
-        {/* Mock Area underneath */}
-        <Path 
-          d={`M0,150 L0,120 Q${(width-60)*0.25},100 ${(width-60)*0.5},130 T${width-60},60 L${width-60},150 Z`} 
-          fill="rgba(16, 185, 129, 0.1)" 
-        />
-        {/* Solid Line (Temp) */}
-        <Path 
-          d={`M0,120 Q${(width-60)*0.25},100 ${(width-60)*0.5},130 T${width-60},60`} 
-          fill="none" 
-          stroke="#10b981" 
-          strokeWidth="2" 
-        />
-        {/* Dashed Line (Hum) */}
-        <Path 
-          d={`M0,100 Q${(width-60)*0.25},130 ${(width-60)*0.5},90 T${width-60},110`} 
-          fill="none" 
-          stroke="rgba(16, 185, 129, 0.5)" 
-          strokeWidth="2" 
-          strokeDasharray="4 4"
-        />
-      </Svg>
-      {/* Legend below the chart */}
-      <View style={styles.chartLegend}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: '#10b981' }]} />
-          <Text style={styles.legendText}>Sıcaklık (°C)</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: 'transparent', borderWidth: 2, borderColor: 'rgba(16, 185, 129, 0.5)', borderStyle: 'dashed' }]} />
-          <Text style={styles.legendText}>Nem (%)</Text>
-        </View>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={[styles.ringBg, { width: size, height: size, borderRadius: size / 2, borderWidth: stroke }]} />
+      <View
+        style={[
+          styles.ringFg,
+          {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            borderWidth: stroke,
+            borderColor: color,
+            transform: [{ rotate: `${(score / 100) * 360 - 90}deg` }],
+            opacity: 0.0001,
+          },
+        ]}
+      />
+      <View style={styles.ringInner}>
+        <Text style={[styles.ringScore, { color }]}>{Math.round(score)}</Text>
+        <Text style={styles.ringLabel}>SAĞLIK</Text>
       </View>
+      <View style={[styles.ringTick, { backgroundColor: color }]} />
     </View>
   );
 };
 
-interface SensorCardProps {
-  title: string;
-  value: string;
-  unit: string;
-  icon: any;
-  trend: 'up' | 'down' | 'stable';
-  trendValue: string;
-  color: string;
-}
-
-const FullWidthSensorCard = ({ title, value, unit, icon: Icon, trend, trendValue, color }: SensorCardProps) => (
-  <View style={styles.fullCard}>
-    <View style={styles.fullCardHeader}>
-      <Text style={styles.fullCardTitle}>{title.toUpperCase()}</Text>
-      <Icon color={color} size={20} />
-    </View>
-    
-    <View style={styles.fullCardBody}>
-      <View>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-          <Text style={styles.fullCardValue}>{value}</Text>
-          <Text style={styles.fullCardUnit}>{unit}</Text>
-        </View>
-        
-        <View style={styles.trendRow}>
-          {trend === 'up' && <ArrowUp color={color} size={14} />}
-          {trend === 'down' && <ArrowDown color="#f43f5e" size={14} />}
-          {trend === 'stable' && <Minus color="rgba(255,255,255,0.5)" size={14} />}
-          <Text style={[styles.trendText, { color: trend === 'down' ? '#f43f5e' : (trend === 'stable' ? 'rgba(255,255,255,0.5)' : color) }]}>
-            {trendValue}
-          </Text>
-        </View>
+const ScoreBar = ({ label, value }: { label: string; value: number }) => {
+  const color = value >= 70 ? '#10b981' : value >= 40 ? '#f59e0b' : '#ef4444';
+  return (
+    <View style={styles.barRow}>
+      <Text style={styles.barLabel}>{label}</Text>
+      <View style={styles.barTrack}>
+        <View style={[styles.barFill, { width: `${Math.min(100, Math.max(0, value))}%`, backgroundColor: color }]} />
       </View>
-      
-      <MiniBarChart color={trend === 'down' ? '#f43f5e' : color} />
+      <Text style={[styles.barValue, { color }]}>{Math.round(value)}</Text>
     </View>
-  </View>
-);
+  );
+};
 
 export default function DashboardScreen() {
-  const [data, setData] = useState<any[]>([]);
+  const [greenhouses, setGreenhouses] = useState<Greenhouse[]>([]);
+  const [analysis, setAnalysis] = useState<Record<number, AIAnalysis>>({});
+  const [simStatus, setSimStatus] = useState<Record<number, any>>({});
+  const [dataMode, setDataMode] = useState<'real' | 'simulation'>('real');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+  const lastModeSync = useRef<string>('');
 
-  const fetchDashboard = async () => {
+  const fetchAll = useCallback(async () => {
     try {
-      const res = await mobileService.getDashboard();
-      setData(res);
-    } catch (err) {
-      console.error(err);
-      router.replace('/(auth)/login');
+      const dash: Greenhouse[] = await mobileService.getDashboard();
+      setGreenhouses(dash);
+
+      // Tüm seralar için paralel AI analizi
+      const aiPairs = await Promise.all(
+        dash.map(async (g) => {
+          try {
+            const a = await aiService.getAnalysis(g.id);
+            return [g.id, a] as const;
+          } catch {
+            return [g.id, null] as const;
+          }
+        })
+      );
+      const aiMap: Record<number, AIAnalysis> = {};
+      for (const [id, a] of aiPairs) if (a) aiMap[id] = a;
+      setAnalysis(aiMap);
+
+      // Simülasyon durumları (yalnızca simülasyon modunda)
+      if (dataMode === 'simulation') {
+        const simPairs = await Promise.all(
+          dash.map(async (g) => {
+            try {
+              const s = await simulationService.status(g.id);
+              return [g.id, s] as const;
+            } catch {
+              return [g.id, null] as const;
+            }
+          })
+        );
+        const simMap: Record<number, any> = {};
+        for (const [id, s] of simPairs) if (s) simMap[id] = s;
+        setSimStatus(simMap);
+      }
+    } catch (err: any) {
+      if (err?.response?.status === 401) {
+        router.replace('/(auth)/login');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [dataMode, router]);
 
-  useEffect(() => {
-    fetchDashboard();
+  // Mod değiştiğinde her sera için sim start/stop
+  const syncMode = useCallback(async (mode: 'real' | 'simulation', list: Greenhouse[]) => {
+    const key = `${mode}:${list.map((g) => g.id).join(',')}`;
+    if (lastModeSync.current === key) return;
+    lastModeSync.current = key;
+    for (const g of list) {
+      try {
+        if (mode === 'simulation') {
+          await simulationService.start(g.id, 2, true);
+        } else {
+          await simulationService.stop(g.id);
+        }
+      } catch {}
+    }
   }, []);
+
+  // Sekme her odaklandığında modu tekrar oku (login'de değişmiş olabilir)
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      authService.getDataMode().then((m) => {
+        if (active) setDataMode(m);
+      });
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
+
+  // İlk yükleme + mode değişimi → senkronize et
+  useEffect(() => {
+    fetchAll();
+  }, [dataMode]);
+
+  // Greenhouse listesi değiştiğinde mod senkronu yap
+  useEffect(() => {
+    if (greenhouses.length > 0) {
+      syncMode(dataMode, greenhouses);
+    }
+  }, [dataMode, greenhouses, syncMode]);
+
+  // Canlı polling: 3 saniyede bir
+  useEffect(() => {
+    const i = setInterval(fetchAll, 3000);
+    return () => clearInterval(i);
+  }, [fetchAll]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchDashboard();
-  }, []);
+    fetchAll();
+  }, [fetchAll]);
 
   const handleLogout = async () => {
+    // Simülasyon açıksa durdur
+    if (dataMode === 'simulation') {
+      for (const g of greenhouses) {
+        try { await simulationService.stop(g.id); } catch {}
+      }
+    }
     await authService.logout();
     router.replace('/(auth)/login');
   };
@@ -148,201 +239,179 @@ export default function DashboardScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />}
       >
+        {/* HEADER */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Genel Bakış</Text>
-            {data.length > 0 && (
+            <View style={styles.headerSub}>
+              <View style={[styles.dot, { backgroundColor: dataMode === 'simulation' ? '#f59e0b' : '#10b981' }]} />
               <Text style={styles.headerSubtitle}>
-                {data[0].name} için gerçek zamanlı telemetri
+                {dataMode === 'simulation' ? 'Simülasyon Modu' : 'Gerçek Veri Modu'}
               </Text>
-            )}
+              <View
+                style={[
+                  styles.modeBadge,
+                  {
+                    backgroundColor:
+                      dataMode === 'simulation' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)',
+                  },
+                ]}
+              >
+                {dataMode === 'simulation' ? (
+                  <FlaskConical size={11} color="#f59e0b" />
+                ) : (
+                  <Cpu size={11} color="#10b981" />
+                )}
+                <Text style={[styles.modeBadgeText, { color: dataMode === 'simulation' ? '#f59e0b' : '#10b981' }]}>
+                  {dataMode === 'simulation' ? 'SİMÜLASYON' : 'GERÇEK VERİ'}
+                </Text>
+              </View>
+            </View>
           </View>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <LogOut color="#64748b" size={22} />
           </TouchableOpacity>
         </View>
 
-        {data.length === 0 ? (
+        {greenhouses.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Sprout size={80} color="#10b981" strokeWidth={1} style={{ opacity: 0.3 }} />
             <Text style={styles.emptyText}>Henüz kayıtlı bir sera bulunmuyor.</Text>
+            <TouchableOpacity
+              style={styles.addCta}
+              onPress={() => router.push('/(tabs)/add-device')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.addCtaText}>QR ile Cihaz Ekle</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          data.map((item) => (
-            <View key={item.id} style={styles.greenhouseSection}>
-              {/* SENSORS */}
-              <View style={styles.cardsContainer}>
-                <FullWidthSensorCard 
-                  title="Sıcaklık" 
-                  value={item.latest_stats.temperature?.toString() || '--'}
-                  unit="°C"
-                  icon={Thermometer} 
-                  trend="up"
-                  trendValue="1.2°"
-                  color="#10b981" 
-                />
-                <FullWidthSensorCard 
-                  title="Nem" 
-                  value={item.latest_stats.humidity?.toString() || '--'}
-                  unit="%"
-                  icon={Droplets} 
-                  trend="stable"
-                  trendValue="Stabil"
-                  color="#10b981" 
-                />
-                <FullWidthSensorCard 
-                  title="Toprak Nemi" 
-                  value={item.latest_stats.soil_moisture?.toString() || '--'}
-                  unit="%"
-                  icon={Sprout} 
-                  trend="down"
-                  trendValue="%5"
-                  color="#f43f5e" 
-                />
-                <FullWidthSensorCard 
-                  title="Işık Seviyesi" 
-                  value={item.latest_stats.light?.toString() || '--'}
-                  unit="lx"
-                  icon={Sun} 
-                  trend="stable"
-                  trendValue="Optimal"
-                  color="#10b981" 
-                />
-              </View>
-
-              {/* CHART SECTION */}
-              <View style={styles.sectionContainer}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitleText}>Çevresel Geçmiş</Text>
-                  <View style={styles.tabsContainer}>
-                    <View style={[styles.tab, styles.activeTab]}>
-                      <Text style={[styles.tabText, styles.activeTabText]}>24S</Text>
-                    </View>
-                    <View style={styles.tab}>
-                      <Text style={styles.tabText}>7G</Text>
-                    </View>
+          greenhouses.map((g) => {
+            const a = analysis[g.id];
+            const sim = simStatus[g.id];
+            return (
+              <View key={g.id} style={styles.greenhouseSection}>
+                {/* Greenhouse başlık */}
+                <View style={styles.ghHeader}>
+                  <View>
+                    <Text style={styles.ghName}>{g.name}</Text>
+                    <Text style={styles.ghDevice}>{g.device_id}</Text>
                   </View>
-                </View>
-                <HistoryChart />
-              </View>
-
-              {/* AI DIAGNOSTICS */}
-              <View style={styles.sectionContainer}>
-                <View style={[styles.sectionHeader, { justifyContent: 'flex-start', gap: 10, marginBottom: 20 }]}>
-                  <Bot color="#10b981" size={24} />
-                  <Text style={styles.sectionTitleText}>Yapay Zeka Analizi</Text>
+                  {dataMode === 'simulation' && sim && (
+                    <View style={styles.simChip}>
+                      <Activity size={11} color="#f59e0b" />
+                      <Text style={styles.simChipText}>
+                        {sim.phase || '...'} • {sim.fed_rows ?? 0}/{sim.total_rows ?? 0}
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
-                <View style={styles.aiCard}>
-                  <View style={styles.aiCardHeader}>
-                    <Text style={styles.aiCardTitle}>Yaprak Sağlığı</Text>
-                    <View style={[styles.badge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                      <Text style={[styles.badgeText, { color: '#10b981' }]}>OPTİMAL</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.aiCardDesc}>Klorofil seviyeleri, A bölgesinde stabil bir fotosentezi gösteriyor.</Text>
+                {/* SENSOR GRID */}
+                <View style={styles.sensorGrid}>
+                  <SensorCard
+                    title="Sıcaklık"
+                    value={g.latest_stats.temperature?.toFixed(1) ?? '--'}
+                    unit="°C"
+                    icon={Thermometer}
+                    color="#f97316"
+                  />
+                  <SensorCard
+                    title="Nem"
+                    value={g.latest_stats.humidity?.toFixed(0) ?? '--'}
+                    unit="%"
+                    icon={Droplets}
+                    color="#3b82f6"
+                  />
+                  <SensorCard
+                    title="Toprak Nemi"
+                    value={g.latest_stats.soil_moisture?.toFixed(0) ?? '--'}
+                    unit="%"
+                    icon={Sprout}
+                    color="#10b981"
+                  />
+                  <SensorCard
+                    title="Işık"
+                    value={g.latest_stats.light?.toFixed(0) ?? '--'}
+                    unit="lx"
+                    icon={Sun}
+                    color="#eab308"
+                  />
                 </View>
 
-                <View style={[styles.aiCard, { borderColor: 'rgba(244, 63, 94, 0.3)', borderWidth: 1 }]}>
-                  <View style={styles.aiCardHeader}>
-                    <Text style={styles.aiCardTitle}>Azot Seviyesi</Text>
-                    <View style={[styles.badge, { backgroundColor: 'rgba(244, 63, 94, 0.15)' }]}>
-                      <Text style={[styles.badgeText, { color: '#f43f5e' }]}>DÜŞÜK</Text>
+                {/* AI ANALYSIS */}
+                <View style={styles.sectionContainer}>
+                  <View style={styles.sectionHeader}>
+                    <View style={styles.sectionTitleRow}>
+                      <Bot color="#10b981" size={22} />
+                      <Text style={styles.sectionTitleText}>Yapay Zeka Analizi</Text>
                     </View>
+                    {a?.model_version ? (
+                      <Text style={styles.modelTag}>Model v{a.model_version}</Text>
+                    ) : (
+                      <Text style={styles.modelTagAlt}>KURAL BAZLI</Text>
+                    )}
                   </View>
-                  <Text style={styles.aiCardDesc}>C bölgesi toprak yataklarında besin eksikliği tespit edildi.</Text>
-                  <View style={styles.recommendationBox}>
-                    <AlertTriangle color="#10b981" size={14} />
-                    <Text style={styles.recommendationText}>Öneri: Damlama hattı 4 üzerinden 2L organik gübre uygulayın.</Text>
-                  </View>
-                </View>
-                
-                <TouchableOpacity style={styles.scanButton}>
-                  <Text style={styles.scanButtonText}>Tam Tarama Başlat</Text>
-                </TouchableOpacity>
-              </View>
 
-              {/* CONNECTED MODULES */}
-              <View style={styles.sectionContainer}>
-                <Text style={[styles.sectionTitleText, { marginBottom: 20 }]}>Bağlı Modüller</Text>
-                
-                <View style={styles.moduleCard}>
-                  <View style={styles.moduleHeader}>
-                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
-                      <Activity color="rgba(255,255,255,0.7)" size={18} />
-                      <Text style={styles.moduleName}>Sensör Düğümü 01</Text>
-                    </View>
-                    <View style={[styles.statusDot, { backgroundColor: '#10b981' }]} />
-                  </View>
-                  <View style={styles.moduleFooter}>
-                    <View style={styles.moduleStat}>
-                      <Battery color="rgba(255,255,255,0.5)" size={14} />
-                      <Text style={styles.moduleStatText}>%90</Text>
-                    </View>
-                    <View style={styles.moduleStat}>
-                      <Wifi color="rgba(255,255,255,0.5)" size={14} />
-                      <Text style={styles.moduleStatText}>İyi</Text>
+                  <View style={styles.healthRow}>
+                    <HealthRing score={a?.health_score ?? 0} />
+                    <View style={{ flex: 1, gap: 6 }}>
+                      {Object.entries(a?.score_breakdown ?? {}).map(([k, v]) => (
+                        <ScoreBar key={k} label={BREAKDOWN_LABELS[k] || k} value={v as number} />
+                      ))}
+                      {a?.is_anomaly && (
+                        <View style={styles.anomalyChip}>
+                          <Sparkles size={12} color="#ef4444" />
+                          <Text style={styles.anomalyText}>Anomali Tespit Edildi</Text>
+                        </View>
+                      )}
                     </View>
                   </View>
+
+                  {/* TAVSİYELER */}
+                  {a?.recommendations && a.recommendations.length > 0 && (
+                    <View style={styles.recList}>
+                      {a.recommendations.map((rec, i) => (
+                        <View key={`${g.id}-rec-${i}`} style={styles.recCard}>
+                          <Text style={styles.recText}>{rec}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
 
-                <View style={[styles.moduleCard, { borderColor: 'rgba(244, 63, 94, 0.2)', borderWidth: 1 }]}>
-                  <View style={styles.moduleHeader}>
-                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
-                      <Activity color="rgba(255,255,255,0.7)" size={18} />
-                      <Text style={styles.moduleName}>Sensör Düğümü 02</Text>
-                    </View>
-                    <View style={[styles.statusDot, { backgroundColor: '#f43f5e' }]} />
+                {/* SİSTEM UYARILARI (rule_alerts) */}
+                <View style={styles.sectionContainer}>
+                  <View style={styles.sectionTitleRow}>
+                    {a?.rule_alerts && a.rule_alerts.length > 0 ? (
+                      <Bell color="#f59e0b" size={20} />
+                    ) : (
+                      <CheckCircle2 color="#10b981" size={20} />
+                    )}
+                    <Text style={styles.sectionTitleText}>Sistem Durumu</Text>
                   </View>
-                  <View style={styles.moduleFooter}>
-                    <View style={styles.moduleStat}>
-                      <Battery color="#f43f5e" size={14} />
-                      <Text style={[styles.moduleStatText, { color: '#f43f5e' }]}>%15</Text>
+                  {a?.rule_alerts && a.rule_alerts.length > 0 ? (
+                    <View style={{ gap: 8, marginTop: 12 }}>
+                      {a.rule_alerts.map((al, i) => (
+                        <View key={`${g.id}-al-${i}`} style={styles.alertCard}>
+                          <AlertTriangle size={16} color="#f59e0b" />
+                          <Text style={styles.alertText}>{al}</Text>
+                        </View>
+                      ))}
                     </View>
-                    <View style={styles.moduleStat}>
-                      <Wifi color="rgba(255,255,255,0.5)" size={14} />
-                      <Text style={styles.moduleStatText}>Zayıf</Text>
-                    </View>
-                  </View>
-                </View>
-                
-                <View style={styles.hubCard}>
-                  <View style={styles.hubHeader}>
-                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
-                      <Cpu color="#10b981" size={22} />
-                      <Text style={styles.moduleName}>Ana Kontrol Hub (GH-A)</Text>
-                    </View>
-                    <View style={[styles.badge, { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#10b981' }]}>
-                      <Text style={[styles.badgeText, { color: '#10b981', fontSize: 10 }]}>AKTİF</Text>
-                    </View>
-                  </View>
-                  <View style={styles.hubStats}>
-                    <View style={styles.hubStatBox}>
-                      <Text style={styles.hubStatLabel}>Çalışma</Text>
-                      <Text style={styles.hubStatValue}>4g 12s</Text>
-                    </View>
-                    <View style={styles.hubStatBox}>
-                      <Text style={styles.hubStatLabel}>Yük</Text>
-                      <Text style={styles.hubStatValue}>%24</Text>
-                    </View>
-                    <View style={styles.hubStatBox}>
-                      <Text style={styles.hubStatLabel}>Sürüm</Text>
-                      <Text style={styles.hubStatValue}>v2.4.1</Text>
-                    </View>
-                  </View>
+                  ) : (
+                    <Text style={styles.okText}>Her şey yolunda — sera parametreleri optimal aralıkta.</Text>
+                  )}
                 </View>
               </View>
-
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </View>
@@ -360,293 +429,175 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 100,
-  },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 20, paddingTop: 60, paddingBottom: 120 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
   },
   headerTitle: {
     color: 'white',
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  headerSubtitle: {
-    color: '#8b949e',
-    fontSize: 14,
-    marginTop: 4,
+  headerSub: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+    flexWrap: 'wrap',
   },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  headerSubtitle: { color: '#8b949e', fontSize: 13 },
+  modeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  modeBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
   logoutButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
-  emptyContainer: {
-    paddingVertical: 100,
     alignItems: 'center',
   },
-  emptyText: {
-    color: '#64748b',
+  emptyContainer: { paddingVertical: 80, alignItems: 'center' },
+  emptyText: { color: '#64748b', marginTop: 16, fontSize: 15, fontWeight: '600' },
+  addCta: {
     marginTop: 20,
-    fontSize: 16,
-    fontWeight: '600',
+    backgroundColor: '#10b981',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
-  greenhouseSection: {
-    marginBottom: 20,
+  addCtaText: { color: 'white', fontWeight: '700' },
+
+  greenhouseSection: { marginBottom: 26 },
+  ghHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 14,
   },
-  cardsContainer: {
-    gap: 15,
-    marginBottom: 30,
+  ghName: { color: 'white', fontSize: 18, fontWeight: '800' },
+  ghDevice: { color: '#64748b', fontSize: 11, marginTop: 2, letterSpacing: 1 },
+  simChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
-  fullCard: {
+  simChipText: { color: '#f59e0b', fontSize: 11, fontWeight: '700' },
+
+  sensorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 14,
+  },
+  sensorCard: {
+    width: (width - 20 * 2 - 10) / 2,
     backgroundColor: '#161b22',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 14,
+    padding: 14,
   },
-  fullCardHeader: {
+  sensorHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 8,
   },
-  fullCardTitle: {
-    color: '#8b949e',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  fullCardBody: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  fullCardValue: {
-    color: 'white',
-    fontSize: 36,
-    fontWeight: 'bold',
-  },
-  fullCardUnit: {
-    color: '#8b949e',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  trendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    gap: 6,
-  },
-  trendText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  miniChartContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 4,
-    height: 30,
-  },
-  bar: {
-    width: 6,
-    borderRadius: 3,
-  },
+  sensorTitle: { color: '#8b949e', fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
+  sensorBody: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  sensorValue: { fontSize: 26, fontWeight: '800' },
+  sensorUnit: { color: '#8b949e', fontSize: 13, fontWeight: '600' },
+
   sectionContainer: {
     backgroundColor: '#161b22',
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
+    padding: 16,
+    marginBottom: 14,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
   },
-  sectionTitleText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#0f1115',
-    borderRadius: 8,
-    padding: 4,
-  },
-  tab: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  activeTab: {
-    backgroundColor: '#21262d',
-  },
-  tabText: {
-    color: '#8b949e',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  activeTabText: {
-    color: 'white',
-  },
-  chartWrapper: {
-    marginTop: 10,
-  },
-  chartLegend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginTop: 15,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
-  },
-  legendText: {
-    color: '#8b949e',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  aiCard: {
-    backgroundColor: '#0f1115',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  aiCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  aiCardTitle: {
-    color: 'white',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  badge: {
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitleText: { color: 'white', fontSize: 16, fontWeight: '700' },
+  modelTag: {
+    backgroundColor: 'rgba(16,185,129,0.15)',
+    color: '#10b981',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  badgeText: {
+    paddingVertical: 3,
+    borderRadius: 8,
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  aiCardDesc: {
-    color: '#8b949e',
-    fontSize: 13,
-    lineHeight: 20,
+  modelTagAlt: {
+    color: '#64748b',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  recommendationBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 12,
-    gap: 10,
-  },
-  recommendationText: {
-    color: '#10b981',
-    fontSize: 12,
-    fontWeight: '500',
-    flex: 1,
-  },
-  scanButton: {
-    backgroundColor: '#a7f3d0',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  scanButtonText: {
-    color: '#065f46',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  moduleCard: {
-    backgroundColor: '#0f1115',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  moduleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  moduleName: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  moduleFooter: {
-    flexDirection: 'row',
-    gap: 20,
-    paddingLeft: 30,
-  },
-  moduleStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  moduleStatText: {
-    color: '#8b949e',
-    fontSize: 12,
-  },
-  hubCard: {
-    backgroundColor: '#0f1115',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 4,
-  },
-  hubHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  hubStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-  },
-  hubStatBox: {
-    alignItems: 'center',
-  },
-  hubStatLabel: {
-    color: '#8b949e',
-    fontSize: 11,
-    marginBottom: 4,
-  },
-  hubStatValue: {
-    color: 'white',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-});
 
+  healthRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 14 },
+  ringBg: { position: 'absolute', borderColor: '#21262d' },
+  ringFg: { position: 'absolute' },
+  ringInner: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  ringScore: { fontSize: 26, fontWeight: '800' },
+  ringLabel: { color: '#8b949e', fontSize: 9, fontWeight: '800', letterSpacing: 1, marginTop: 2 },
+  ringTick: { position: 'absolute', width: 8, height: 8, borderRadius: 4, top: 4 },
+
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  barLabel: { color: '#8b949e', fontSize: 10, fontWeight: '700', width: 76 },
+  barTrack: { flex: 1, height: 5, backgroundColor: '#21262d', borderRadius: 3, overflow: 'hidden' },
+  barFill: { height: 5, borderRadius: 3 },
+  barValue: { fontSize: 10, fontWeight: '800', width: 28, textAlign: 'right' },
+
+  anomalyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(239,68,68,0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  anomalyText: { color: '#ef4444', fontSize: 10, fontWeight: '800' },
+
+  recList: { gap: 8, marginTop: 4 },
+  recCard: {
+    backgroundColor: '#0f1115',
+    borderRadius: 10,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#10b981',
+  },
+  recText: { color: '#cbd5e1', fontSize: 13, lineHeight: 18 },
+
+  alertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.2)',
+  },
+  alertText: { color: '#fbbf24', fontSize: 13, flex: 1, fontWeight: '600' },
+  okText: { color: '#10b981', fontSize: 13, marginTop: 10, fontWeight: '600' },
+});

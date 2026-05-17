@@ -88,14 +88,27 @@ def get_ai_analysis(
         .order_by(models.SensorData.id.desc())
         .first()
     )
-    rule_alerts = []
-    if latest_row:
-        rule_alerts = analyze({
-            "temperature": latest_row.temperature or 20,
-            "humidity": latest_row.humidity or 60,
-            "soilMoisture": latest_row.soil_moisture or 50,
-            "light": latest_row.light or 10000,
-        })
+
+    # Bu sera için hiç sensör verisi yoksa boş/uyarı yanıtı dön —
+    # diğer seraların verisinden ya da varsayılan değerlerden öneri üretme.
+    if latest_row is None:
+        return schemas.AIAnalysisResponse(
+            health_score=0.0,
+            anomaly_score=0.0,
+            is_anomaly=False,
+            score_breakdown={},
+            recommendations=["Bu sera için henüz sensör verisi yok. Cihazınızdan veri akmaya başladığında analiz burada görünecek."],
+            rule_alerts=["Sera için ölçüm bulunamadı."],
+            model_version=None,
+            last_trained_at=None,
+        )
+
+    rule_alerts = analyze({
+        "temperature": latest_row.temperature or 20,
+        "humidity": latest_row.humidity or 60,
+        "soilMoisture": latest_row.soil_moisture or 50,
+        "light": latest_row.light or 10000,
+    })
 
     # ML modeli varsa kullan
     scorer = _load_scorer(db, greenhouse_id)
@@ -119,30 +132,36 @@ def get_ai_analysis(
                 model_version = model_info.model_version
                 last_trained_at = model_info.created_at
 
-            # Bu analizi kaydet
-            sensor_id = latest_row.id if latest_row else None
-            if sensor_id:
-                existing = db.query(models.PlantHealthScore).filter(
-                    models.PlantHealthScore.sensor_data_id == sensor_id
-                ).first()
-                if not existing:
-                    hs = models.PlantHealthScore(
-                        greenhouse_id=greenhouse_id,
-                        sensor_data_id=sensor_id,
-                        health_score=health_score,
-                        anomaly_score=anomaly_score,
-                        is_anomaly=is_anomaly,
-                        score_breakdown=json.dumps(score_breakdown),
-                        created_at=datetime.utcnow(),
-                    )
-                    db.add(hs)
-                    db.commit()
-    else:
-        # Model yokken sensör değerlerine göre basit skor üret
-        if latest_row:
-            health_score = _rule_based_health_score(latest_row)
-            score_breakdown = _rule_based_breakdown(latest_row)
-    # Öneri üret
+    # Sağlık skoru ve breakdown her zaman son satıra göre dinamik hesaplanır;
+    # model varsa kümeleme skoruyla harmanlanır.
+    if latest_row:
+        rule_score = _rule_based_health_score(latest_row)
+        rule_breakdown = _rule_based_breakdown(latest_row)
+        if scorer:
+            health_score = round(health_score * 0.5 + rule_score * 0.5, 1)
+        else:
+            health_score = rule_score
+        score_breakdown = rule_breakdown
+
+    # Bu analizi kaydet (her yeni sensör satırı için tek kayıt)
+    sensor_id = latest_row.id if latest_row else None
+    if sensor_id:
+        existing = db.query(models.PlantHealthScore).filter(
+            models.PlantHealthScore.sensor_data_id == sensor_id
+        ).first()
+        if not existing:
+            hs = models.PlantHealthScore(
+                greenhouse_id=greenhouse_id,
+                sensor_data_id=sensor_id,
+                health_score=health_score,
+                anomaly_score=anomaly_score,
+                is_anomaly=is_anomaly,
+                score_breakdown=json.dumps(score_breakdown),
+                created_at=datetime.utcnow(),
+            )
+            db.add(hs)
+            db.commit()
+    # Öneri üret - tavsiyeler son sensör verisine göre anlık tepki versin
     features = {}
     if not df.empty:
         import numpy as np
@@ -157,6 +176,25 @@ def get_ai_analysis(
             ]
             for i, name in enumerate(fn):
                 features[name] = float(x_vec.flatten()[i])
+
+    # En son okumayı öncelik ver: tavsiyeler anlık değişimlere tepki versin
+    if latest_row:
+        import math as _math
+        if latest_row.temperature is not None:
+            features["temp_mean"] = float(latest_row.temperature)
+        if latest_row.humidity is not None:
+            features["humidity_mean"] = float(latest_row.humidity)
+        if latest_row.soil_moisture is not None:
+            features["soil_moisture_mean"] = float(latest_row.soil_moisture)
+        if latest_row.light is not None:
+            features["light_mean"] = float(latest_row.light)
+        if latest_row.soil_temperature is not None:
+            features["soil_temp_mean"] = float(latest_row.soil_temperature)
+        t = features.get("temp_mean", 22.0)
+        h = features.get("humidity_mean", 70.0)
+        es = 0.6108 * _math.exp(17.27 * t / (t + 237.3))
+        features["vpd"] = round((1 - h / 100.0) * es, 4)
+        features["temp_humidity_ratio"] = t / (h + 1e-5)
 
     recommender = Recommender()
     recommendations = recommender.generate(features, health_score, is_anomaly)
@@ -375,49 +413,41 @@ def trigger_training(
     }
 
 
-# Yardımcı fonksiyonlar (model yokken basit skor)
-def _rule_based_health_score(row) -> float:
-    score = 50.0
-    temp = row.temperature or 20
-    hum = row.humidity or 60
-    sm = row.soil_moisture or 50
-    light = row.light or 10000
+# Yardımcı fonksiyonlar (her zaman son satıra göre dinamik skor)
+def _param_score(val: float, optimal: float, tol: float) -> float:
+    """Domates optimaline uzaklığa göre 0-100 arası sürekli skor."""
+    return max(0.0, min(100.0, 100.0 - abs(val - optimal) / tol * 100.0))
 
-    if 18 <= temp <= 26:
-        score += 10
-    elif temp > 32 or temp < 12:
-        score -= 20
 
-    if 60 <= hum <= 80:
-        score += 10
-    elif hum > 90 or hum < 40:
-        score -= 15
-
-    if sm >= 40:
-        score += 10
-    elif sm < 25:
-        score -= 20
-
-    if light >= 10000:
-        score += 10
-    elif light < 3000:
-        score -= 10
-
-    return max(0, min(100, score))
-    
 def _rule_based_breakdown(row) -> dict:
-    temp = row.temperature or 20
-    hum = row.humidity or 60
-    sm = row.soil_moisture or 50
-    light = row.light or 10000
+    import math as _m
+    temp = row.temperature if row.temperature is not None else 22.0
+    hum = row.humidity if row.humidity is not None else 70.0
+    sm = row.soil_moisture if row.soil_moisture is not None else 60.0
+    light = row.light if row.light is not None else 25000.0
 
-    def s(val, opt, tol):
-        return max(0, min(100, round(100 - abs(val - opt) / tol * 100)))
+    # VPD (kPa)
+    es = 0.6108 * _m.exp(17.27 * temp / (temp + 237.3))
+    vpd = (1.0 - hum / 100.0) * es
 
     return {
-        "sicaklik": s(temp, 22, 12),
-        "nem": s(hum, 70, 25),
-        "toprak_nemi": s(sm, 60, 40),
-        "isik": s(light, 25000, 25000),
-        "vpd": 50,
+        "sicaklik": round(_param_score(temp, 22.0, 12.0), 1),
+        "nem": round(_param_score(hum, 70.0, 25.0), 1),
+        "toprak_nemi": round(_param_score(sm, 60.0, 40.0), 1),
+        "isik": round(_param_score(light, 25000.0, 25000.0), 1),
+        "vpd": round(_param_score(vpd, 0.8, 2.0), 1),
     }
+
+
+def _rule_based_health_score(row) -> float:
+    """Breakdown ağırlıklı ortalaması — sürekli ve dinamik."""
+    b = _rule_based_breakdown(row)
+    weights = {
+        "sicaklik": 0.22,
+        "nem": 0.18,
+        "toprak_nemi": 0.22,
+        "isik": 0.18,
+        "vpd": 0.20,
+    }
+    total = sum(b[k] * w for k, w in weights.items())
+    return round(max(0.0, min(100.0, total)), 1)

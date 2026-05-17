@@ -27,7 +27,14 @@ export const authService = {
   },
   logout: async () => {
     await AsyncStorage.removeItem('userToken');
-  }
+  },
+  getDataMode: async (): Promise<'real' | 'simulation'> => {
+    const v = await AsyncStorage.getItem('dataMode');
+    return v === 'simulation' ? 'simulation' : 'real';
+  },
+  setDataMode: async (mode: 'real' | 'simulation') => {
+    await AsyncStorage.setItem('dataMode', mode);
+  },
 };
 
 export const mobileService = {
@@ -40,6 +47,28 @@ export const mobileService = {
     return response.data;
   }
 };
+
+export const userService = {
+  getGreenhouses: async () => {
+    const response = await api.get('/user/greenhouses');
+    return response.data;
+  },
+  addGreenhouse: async (name: string, deviceId: string) => {
+    const response = await api.post('/user/greenhouses', {
+      name,
+      device_id: deviceId,
+    });
+    return response.data;
+  },
+};
+
+export const sensorService = {
+  getLatest: async (greenhouseId: number) => {
+    const response = await api.get(`/sensor/latest/${greenhouseId}`);
+    return response.data;
+  },
+};
+
 export const aiService = {
   getAnalysis: async (greenhouseId: number) => {
     const response = await api.get(`/ai/analysis/${greenhouseId}`);
@@ -67,3 +96,21 @@ export const aiService = {
   },
 };
 
+export const simulationService = {
+  start: async (greenhouseId: number, intervalSeconds: number = 2, loop: boolean = true) => {
+    const response = await api.post('/simulation/start', {
+      greenhouse_id: greenhouseId,
+      interval_seconds: intervalSeconds,
+      loop,
+    });
+    return response.data;
+  },
+  stop: async (greenhouseId: number) => {
+    const response = await api.post('/simulation/stop', { greenhouse_id: greenhouseId });
+    return response.data;
+  },
+  status: async (greenhouseId: number) => {
+    const response = await api.get(`/simulation/status/${greenhouseId}`);
+    return response.data;
+  },
+};

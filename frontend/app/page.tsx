@@ -13,7 +13,9 @@ import {
   ChevronDown,
   LayoutDashboard,
   Moon,
-  Loader2
+  Loader2,
+  Cpu,
+  FlaskConical
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -39,11 +41,15 @@ export default function Home() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [dataMode, setDataMode] = useState<"real" | "simulation">("real");
+  const [simStatus, setSimStatus] = useState<any>(null);
 
   const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
+    const saved = typeof window !== "undefined" ? localStorage.getItem("data_mode") : null;
+    if (saved === "real" || saved === "simulation") setDataMode(saved);
   }, []);
 
   const dark = mounted ? theme === "dark" : false; // Default to light as per user request
@@ -125,15 +131,90 @@ export default function Home() {
     if (t) fetchGreenhouses();
   }, []);
 
+  // Anlık sensör yenileme + alert akışı (her 2sn)
+  const fetchAlerts = async () => {
+    if (!selectedGid) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await axios.get(`http://localhost:8000/ai/analysis/${selectedGid}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const newAlerts = res.data?.rule_alerts ?? [];
+      setAlerts(newAlerts);
+    } catch {}
+  };
+
   useEffect(() => {
     if (selectedGid) {
+      // Sera değiştiğinde eski seranın verisi kalmasın
+      setData(null);
+      setHistory([]);
+      setAlerts([]);
       fetchData();
-      const interval = setInterval(fetchData, 10000);
+      fetchAlerts();
+      const interval = setInterval(() => {
+        fetchData();
+        fetchAlerts();
+      }, 2500);
       return () => clearInterval(interval);
     }
   }, [selectedGid]);
 
-  const handleLogout = () => {
+  // Login'de seçilen veri kaynağı moduna göre simülasyonu yönet
+  useEffect(() => {
+    if (!selectedGid) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const sync = async () => {
+      try {
+        if (dataMode === "simulation") {
+          const res = await axios.post(
+            "http://localhost:8000/simulation/start",
+            { greenhouse_id: selectedGid, interval_seconds: 2, loop: true },
+            { headers }
+          );
+          setSimStatus(res.data);
+        } else {
+          const res = await axios.post(
+            "http://localhost:8000/simulation/stop",
+            { greenhouse_id: selectedGid },
+            { headers }
+          );
+          setSimStatus(res.data);
+        }
+      } catch (err) {
+        console.error("Simülasyon mod hatası:", err);
+      }
+    };
+    sync();
+
+    if (dataMode !== "simulation") return;
+    const statusInt = setInterval(async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:8000/simulation/status/${selectedGid}`,
+          { headers }
+        );
+        setSimStatus(res.data);
+      } catch {}
+    }, 3000);
+    return () => clearInterval(statusInt);
+  }, [selectedGid, dataMode]);
+
+  const handleLogout = async () => {
+    const token = localStorage.getItem("token");
+    if (token && selectedGid && dataMode === "simulation") {
+      try {
+        await axios.post(
+          "http://localhost:8000/simulation/stop",
+          { greenhouse_id: selectedGid },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch {}
+    }
     localStorage.removeItem("token");
     router.push("/login");
   };
@@ -156,11 +237,29 @@ export default function Home() {
               <h1 className={`text-4xl font-black tracking-tight ${dark ? 'text-white/90' : 'text-slate-900'}`}>
                 Analizler
               </h1>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 <p className={`text-sm font-bold uppercase tracking-widest ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
                   {user?.sub} • {greenhouses.find(g => g.id === selectedGid)?.name || "Sera Seçilmedi"}
                 </p>
+                <span
+                  title={
+                    dataMode === "simulation"
+                      ? `Simülasyon: ${simStatus?.phase ?? "..."} • beslenen satır: ${simStatus?.fed_rows ?? 0}/${simStatus?.total_rows ?? 0}`
+                      : "Arduino canlı veri modu"
+                  }
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
+                    dataMode === "simulation"
+                      ? "bg-amber-500/10 text-amber-500 border-amber-500/30"
+                      : "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                  }`}
+                >
+                  {dataMode === "simulation" ? <FlaskConical size={12} /> : <Cpu size={12} />}
+                  {dataMode === "simulation" ? "Simülasyon" : "Gerçek Veri"}
+                  {dataMode === "simulation" && simStatus?.fed_rows !== undefined && (
+                    <span className="opacity-70">• {simStatus.fed_rows}</span>
+                  )}
+                </span>
               </div>
             </div>
 

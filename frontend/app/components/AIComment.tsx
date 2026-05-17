@@ -118,9 +118,11 @@ export default function AIComment({ greenhouseId, dark }: Props) {
     };
 
     useEffect(() => {
+        // Sera değiştiğinde eski analiz görünmesin
+        setAnalysis(null);
         setLoading(true);
         fetchAnalysis();
-        const interval = setInterval(fetchAnalysis, 30000);
+        const interval = setInterval(fetchAnalysis, 3000);
         return () => clearInterval(interval);
     }, [greenhouseId]);
 

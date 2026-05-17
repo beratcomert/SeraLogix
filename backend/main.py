@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import models
 from database import engine
-from api import auth, admin, user, sensor, mobile, ai
+from api import auth, admin, user, sensor, mobile, ai, simulation
 
 # Veritabanı tablolarını oluştur (Basit yaklaşım, Alembic önerilir ama şimdilik yeterli)
 models.Base.metadata.create_all(bind=engine)
@@ -32,6 +32,7 @@ app.include_router(user.router, prefix="/user", tags=["User"])
 app.include_router(sensor.router, prefix="/sensor", tags=["Sensor"])
 app.include_router(mobile.router, prefix="/mobile", tags=["Mobile"])
 app.include_router(ai.router, prefix="/ai", tags=["AI"])
+app.include_router(simulation.router, prefix="/simulation", tags=["Simulation"])
 
 
 @app.get("/")
